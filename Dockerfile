@@ -11,7 +11,7 @@ RUN set -eux; \
         openssh-client \
         ca-certificates \
         gnupg \
-        github-cli; \
+        gh; \
     rm -rf /var/lib/apt/lists/*; \
     npm install -g @anthropic-ai/claude-code
 
