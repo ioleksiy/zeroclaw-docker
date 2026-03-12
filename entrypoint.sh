@@ -19,14 +19,19 @@ ensure_writable_dir() {
   fi
 }
 
-ensure_writable_dir "/zeroclaw-data"
-ensure_writable_dir "/repos"
+require_writable_dir() {
+  local dir="$1"
 
-if [[ ! -w "/zeroclaw-data" ]]; then
-  export HOME="/tmp/zeroclaw-home"
-  mkdir -p "${HOME}"
-  echo "warning: /zeroclaw-data is not writable; using ${HOME} for git global config" >&2
-fi
+  ensure_writable_dir "${dir}"
+
+  if [[ ! -w "${dir}" ]]; then
+    echo "error: ${dir} is not writable; waiting for volume permissions init" >&2
+    exit 1
+  fi
+}
+
+require_writable_dir "/zeroclaw-data"
+require_writable_dir "/repos"
 
 if [[ -n "${GIT_USER_NAME:-}" || -n "${GIT_USER_EMAIL:-}" ]]; then
   if [[ -n "${GIT_USER_NAME:-}" ]]; then

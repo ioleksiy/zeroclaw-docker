@@ -14,7 +14,21 @@ This image extends upstream ZeroClaw with:
 
 No `docker-compose` is included in this repository. It provides image build and publish only.
 
-At container startup, the entrypoint attempts to make `/zeroclaw-data` and `/repos` writable when running as root (common fix for fresh root-owned Swarm volumes).
+At container startup, this image requires `/zeroclaw-data` and `/repos` to be writable. If either directory is not writable, the container exits with an error so Swarm/Portainer can restart it after permissions are initialized.
+
+For Swarm, run a one-shot init service to fix volume ownership, for example:
+
+```yaml
+init-permissions:
+	image: alpine
+	command: sh -c "chown -R 1000:1000 /zeroclaw-data /repos"
+	volumes:
+		- zeroclaw-data:/zeroclaw-data
+		- repos:/repos
+	deploy:
+		restart_policy:
+			condition: none
+```
 
 ## Environment Variables
 
