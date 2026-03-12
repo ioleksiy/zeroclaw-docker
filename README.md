@@ -14,14 +14,9 @@ This image extends upstream ZeroClaw with:
 
 No `docker-compose` is included in this repository. It provides image build and publish only.
 
-At startup, the container intentionally begins as `root`, fixes ownership for mounted volumes, then drops privileges and executes ZeroClaw as a non-root user via `gosu`.
+The image keeps the upstream non-root runtime model (`UID:GID = 65534:65534`) and validates required writable mounts at startup (`/zeroclaw-data` and `/repos`).
 
-Default runtime identity is inherited from the upstream ZeroClaw image user: `UID:GID = 65534:65534`.
-
-You can override these for bind mounts when needed:
-
-- `ZEROCLAW_UID` - target runtime UID after permission fix (default: `65534`)
-- `ZEROCLAW_GID` - target runtime GID after permission fix (default: `65534`)
+If mount permissions are wrong, startup is blocked with a clear message so you can fix host-side ownership and restart.
 
 ## Environment Variables
 
@@ -30,11 +25,14 @@ You can override these for bind mounts when needed:
 - `ANTHROPIC_API_KEY` - API key used by Claude Code CLI
 - `GIT_USER_NAME` - Sets global git `user.name` at container start
 - `GIT_USER_EMAIL` - Sets global git `user.email` at container start
+- `GIT_SIGNING_KEY` - Sets global git `user.signingkey` at container start
+- `GIT_DEFAULT_BRANCH` - Sets global git `init.defaultBranch` at container start
+- `GIT_PULL_REBASE` - Sets global git `pull.rebase` at container start
+- `GIT_AUTOCRLF` - Sets global git `core.autocrlf` at container start
+- `GIT_PUSH_AUTO_SETUP_REMOTE` - Sets global git `push.autoSetupRemote` at container start
 - `GITHUB_TOKEN` - Auth token for GitHub CLI and git push workflows
 - `ZEROCLAW_ALLOW_PUBLIC_BIND` - Set `true` to allow public container networking
 - `ZEROCLAW_GATEWAY_PORT` - ZeroClaw gateway port (default: `42617`)
-- `ZEROCLAW_UID` - UID used after startup permission fix (default: `65534`)
-- `ZEROCLAW_GID` - GID used after startup permission fix (default: `65534`)
 
 ## Pull Image
 
