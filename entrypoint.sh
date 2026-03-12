@@ -1,59 +1,49 @@
 #!/bin/bash
 set -e
 
-log_identity_debug() {
-  local exit_code="$?"
-  local line_no="${1:-unknown}"
-  local name=""
-  local _x=""
-  local uid=""
-  local gid=""
-  local home=""
-  local shell=""
-
-  echo "entrypoint error: failed at line ${line_no} (exit ${exit_code})" >&2
-  echo "identity debug: available users (name uid gid home shell):" >&2
-  while IFS=: read -r name _x uid gid _x home shell; do
-    echo "  ${name} uid=${uid} gid=${gid} home=${home} shell=${shell}" >&2
-  done < <(getent passwd || true)
-
-  echo "identity debug: available groups (name gid):" >&2
-  while IFS=: read -r name _x gid _x; do
-    echo "  ${name} gid=${gid}" >&2
-  done < <(getent group || true)
-
-  echo "hint: set ZEROCLAW_UID and ZEROCLAW_GID to a valid pair, for example:" >&2
-  echo "  -e ZEROCLAW_UID=65534 -e ZEROCLAW_GID=65534" >&2
+wait_for_manual_fix() {
+  echo "startup blocked: this container is running as non-root and needs writable mounts." >&2
+  echo "required writable paths: /zeroclaw-data and /repos" >&2
+  echo "fix volume ownership/permissions, then restart the container." >&2
+  echo "container will stay running for troubleshooting (attach with docker exec)." >&2
+  while true; do
+    sleep 3600
+  done
 }
 
-trap 'log_identity_debug ${LINENO}' ERR
+is_writable_dir() {
+  local dir="$1"
+  local probe="${dir}/.write-probe-$$"
 
-TARGET_UID="${ZEROCLAW_UID:-65534}"
-TARGET_GID="${ZEROCLAW_GID:-65534}"
+  if [ ! -d "${dir}" ]; then
+    return 1
+  fi
 
-mkdir -p /zeroclaw-data /repos
+  if [ ! -w "${dir}" ]; then
+    return 1
+  fi
 
-# Named volumes are created as root:root; fix ownership before dropping privileges.
-chown -R "${TARGET_UID}:${TARGET_GID}" /zeroclaw-data 2>/dev/null || true
-chown -R "${TARGET_UID}:${TARGET_GID}" /repos 2>/dev/null || true
+  : > "${probe}" 2>/dev/null || return 1
+  rm -f "${probe}" 2>/dev/null || true
+  return 0
+}
 
-PASSWD_HOME="$(getent passwd "${TARGET_UID}" | cut -d: -f6 || true)"
-if [ -n "${PASSWD_HOME}" ] && [ "${PASSWD_HOME}" != "/nonexistent" ]; then
-  HOME_DIR="${PASSWD_HOME}"
-else
-  HOME_DIR="/zeroclaw-data"
+if ! is_writable_dir "/zeroclaw-data" || ! is_writable_dir "/repos"; then
+  echo "permission error: unable to write to one or more required mount points." >&2
+  id >&2 || true
+  ls -ld /zeroclaw-data /repos >&2 || true
+  wait_for_manual_fix
 fi
 
-mkdir -p "${HOME_DIR}"
-chown -R "${TARGET_UID}:${TARGET_GID}" "${HOME_DIR}" 2>/dev/null || true
-GIT_CONFIG_GLOBAL_PATH="${HOME_DIR}/.gitconfig"
+if [ "${HOME:-}" = "" ] || [ "${HOME}" = "/nonexistent" ]; then
+  export HOME="/zeroclaw-data"
+fi
 
 if [ -n "${GIT_USER_NAME:-}" ]; then
-  HOME="${HOME_DIR}" GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL_PATH}" gosu "${TARGET_UID}:${TARGET_GID}" git config --global user.name "${GIT_USER_NAME}"
+  git config --global user.name "${GIT_USER_NAME}" || true
 fi
 if [ -n "${GIT_USER_EMAIL:-}" ]; then
-  HOME="${HOME_DIR}" GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL_PATH}" gosu "${TARGET_UID}:${TARGET_GID}" git config --global user.email "${GIT_USER_EMAIL}"
+  git config --global user.email "${GIT_USER_EMAIL}" || true
 fi
 
-export HOME="${HOME_DIR}"
-exec gosu "${TARGET_UID}:${TARGET_GID}" "$@"
+exec "$@"
