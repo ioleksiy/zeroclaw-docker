@@ -22,17 +22,19 @@ ensure_writable_dir() {
 ensure_writable_dir "/zeroclaw-data"
 ensure_writable_dir "/repos"
 
-if [[ -n "${GIT_USER_NAME:-}" || -n "${GIT_USER_EMAIL:-}" ]]; then
-  if [[ -w "/zeroclaw-data" ]]; then
-    if [[ -n "${GIT_USER_NAME:-}" ]]; then
-      git config --global user.name "${GIT_USER_NAME}"
-    fi
+if [[ ! -w "/zeroclaw-data" ]]; then
+  export HOME="/tmp/zeroclaw-home"
+  mkdir -p "${HOME}"
+  echo "warning: /zeroclaw-data is not writable; using ${HOME} for git global config" >&2
+fi
 
-    if [[ -n "${GIT_USER_EMAIL:-}" ]]; then
-      git config --global user.email "${GIT_USER_EMAIL}"
-    fi
-  else
-    echo "warning: /zeroclaw-data is not writable; skipping git global config" >&2
+if [[ -n "${GIT_USER_NAME:-}" || -n "${GIT_USER_EMAIL:-}" ]]; then
+  if [[ -n "${GIT_USER_NAME:-}" ]]; then
+    git config --global user.name "${GIT_USER_NAME}"
+  fi
+
+  if [[ -n "${GIT_USER_EMAIL:-}" ]]; then
+    git config --global user.email "${GIT_USER_EMAIL}"
   fi
 fi
 
