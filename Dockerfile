@@ -8,6 +8,7 @@ RUN set -eux; \
         git \
         curl \
         bash \
+        gosu \
         openssh-client \
         ca-certificates \
         gnupg \
@@ -17,9 +18,10 @@ RUN set -eux; \
 
 FROM ghcr.io/zeroclaw-labs/zeroclaw:latest
 
-# The base image has no /bin/sh, so tool installation is done in a builder stage
-# and copied in without running commands in this final stage.
+# The base image has no /bin/sh, so tools are installed in a builder stage and
+# copied in; bash is then used explicitly for the minimal final-stage mkdir.
 COPY --from=tools /usr/bin/ /usr/bin/
+COPY --from=tools /usr/sbin/ /usr/sbin/
 COPY --from=tools /usr/lib/ /usr/lib/
 COPY --from=tools /usr/local/ /usr/local/
 COPY --from=tools /usr/share/ /usr/share/
@@ -30,6 +32,10 @@ COPY --from=tools /etc/ssh/ /etc/ssh/
 COPY --from=tools /etc/bash.bashrc /etc/bash.bashrc
 COPY --from=tools /bin/bash /bin/bash
 
+SHELL ["/bin/bash", "-c"]
+RUN mkdir -p /zeroclaw-data /repos
+
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
+USER root

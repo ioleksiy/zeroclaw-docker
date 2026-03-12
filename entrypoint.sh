@@ -1,46 +1,25 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+set -e
 
-ensure_writable_dir() {
-  local dir="$1"
+TARGET_UID="${ZEROCLAW_UID:-65534}"
+TARGET_GID="${ZEROCLAW_GID:-65534}"
 
-  if [[ ! -d "${dir}" ]]; then
-    return 0
-  fi
+mkdir -p /zeroclaw-data /repos
 
-  if [[ -w "${dir}" ]]; then
-    return 0
-  fi
+# Named volumes are created as root:root; fix ownership before dropping privileges.
+chown -R "${TARGET_UID}:${TARGET_GID}" /zeroclaw-data 2>/dev/null || true
+chown -R "${TARGET_UID}:${TARGET_GID}" /repos 2>/dev/null || true
 
-  # In Swarm/Portainer, fresh named volumes are often root-owned.
-  # If we are root, relax ownership/permissions so the app can write.
-  if [[ "$(id -u)" -eq 0 ]]; then
-    chmod -R a+rwX "${dir}" 2>/dev/null || true
-  fi
-}
-
-require_writable_dir() {
-  local dir="$1"
-
-  ensure_writable_dir "${dir}"
-
-  if [[ ! -w "${dir}" ]]; then
-    echo "error: ${dir} is not writable; waiting for volume permissions init" >&2
-    exit 1
-  fi
-}
-
-require_writable_dir "/zeroclaw-data"
-require_writable_dir "/repos"
-
-if [[ -n "${GIT_USER_NAME:-}" || -n "${GIT_USER_EMAIL:-}" ]]; then
-  if [[ -n "${GIT_USER_NAME:-}" ]]; then
-    git config --global user.name "${GIT_USER_NAME}"
-  fi
-
-  if [[ -n "${GIT_USER_EMAIL:-}" ]]; then
-    git config --global user.email "${GIT_USER_EMAIL}"
-  fi
+HOME_DIR="$(getent passwd "${TARGET_UID}" | cut -d: -f6 || true)"
+if [ -n "${HOME_DIR}" ] && [ -d "${HOME_DIR}" ]; then
+  chown -R "${TARGET_UID}:${TARGET_GID}" "${HOME_DIR}" 2>/dev/null || true
 fi
 
-exec "$@"
+if [ -n "${GIT_USER_NAME:-}" ]; then
+  gosu "${TARGET_UID}:${TARGET_GID}" git config --global user.name "${GIT_USER_NAME}"
+fi
+if [ -n "${GIT_USER_EMAIL:-}" ]; then
+  gosu "${TARGET_UID}:${TARGET_GID}" git config --global user.email "${GIT_USER_EMAIL}"
+fi
+
+exec gosu "${TARGET_UID}:${TARGET_GID}" "$@"

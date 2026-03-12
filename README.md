@@ -14,21 +14,14 @@ This image extends upstream ZeroClaw with:
 
 No `docker-compose` is included in this repository. It provides image build and publish only.
 
-At container startup, this image requires `/zeroclaw-data` and `/repos` to be writable. If either directory is not writable, the container exits with an error so Swarm/Portainer can restart it after permissions are initialized.
+At startup, the container intentionally begins as `root`, fixes ownership for mounted volumes, then drops privileges and executes ZeroClaw as a non-root user via `gosu`.
 
-For Swarm, run a one-shot init service to fix volume ownership, for example:
+Default runtime identity is inherited from the upstream ZeroClaw image user: `UID:GID = 65534:65534`.
 
-```yaml
-init-permissions:
-	image: alpine
-	command: sh -c "chown -R 1000:1000 /zeroclaw-data /repos"
-	volumes:
-		- zeroclaw-data:/zeroclaw-data
-		- repos:/repos
-	deploy:
-		restart_policy:
-			condition: none
-```
+You can override these for bind mounts when needed:
+
+- `ZEROCLAW_UID` - target runtime UID after permission fix (default: `65534`)
+- `ZEROCLAW_GID` - target runtime GID after permission fix (default: `65534`)
 
 ## Environment Variables
 
@@ -40,6 +33,8 @@ init-permissions:
 - `GITHUB_TOKEN` - Auth token for GitHub CLI and git push workflows
 - `ZEROCLAW_ALLOW_PUBLIC_BIND` - Set `true` to allow public container networking
 - `ZEROCLAW_GATEWAY_PORT` - ZeroClaw gateway port (default: `42617`)
+- `ZEROCLAW_UID` - UID used after startup permission fix (default: `65534`)
+- `ZEROCLAW_GID` - GID used after startup permission fix (default: `65534`)
 
 ## Pull Image
 
