@@ -4,13 +4,23 @@ set -e
 log_identity_debug() {
   local exit_code="$?"
   local line_no="${1:-unknown}"
+  local name=""
+  local _x=""
+  local uid=""
+  local gid=""
+  local home=""
+  local shell=""
 
   echo "entrypoint error: failed at line ${line_no} (exit ${exit_code})" >&2
   echo "identity debug: available users (name uid gid home shell):" >&2
-  getent passwd | awk -F: '{ printf "  %s uid=%s gid=%s home=%s shell=%s\n", $1, $3, $4, $6, $7 }' >&2 || true
+  while IFS=: read -r name _x uid gid _x home shell; do
+    echo "  ${name} uid=${uid} gid=${gid} home=${home} shell=${shell}" >&2
+  done < <(getent passwd || true)
 
   echo "identity debug: available groups (name gid):" >&2
-  getent group | awk -F: '{ printf "  %s gid=%s\n", $1, $3 }' >&2 || true
+  while IFS=: read -r name _x gid _x; do
+    echo "  ${name} gid=${gid}" >&2
+  done < <(getent group || true)
 
   echo "hint: set ZEROCLAW_UID and ZEROCLAW_GID to a valid pair, for example:" >&2
   echo "  -e ZEROCLAW_UID=65534 -e ZEROCLAW_GID=65534" >&2
@@ -36,12 +46,14 @@ fi
 
 mkdir -p "${HOME_DIR}"
 chown -R "${TARGET_UID}:${TARGET_GID}" "${HOME_DIR}" 2>/dev/null || true
+GIT_CONFIG_GLOBAL_PATH="${HOME_DIR}/.gitconfig"
 
 if [ -n "${GIT_USER_NAME:-}" ]; then
-  env HOME="${HOME_DIR}" gosu "${TARGET_UID}:${TARGET_GID}" git config --global user.name "${GIT_USER_NAME}"
+  HOME="${HOME_DIR}" GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL_PATH}" gosu "${TARGET_UID}:${TARGET_GID}" git config --global user.name "${GIT_USER_NAME}"
 fi
 if [ -n "${GIT_USER_EMAIL:-}" ]; then
-  env HOME="${HOME_DIR}" gosu "${TARGET_UID}:${TARGET_GID}" git config --global user.email "${GIT_USER_EMAIL}"
+  HOME="${HOME_DIR}" GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL_PATH}" gosu "${TARGET_UID}:${TARGET_GID}" git config --global user.email "${GIT_USER_EMAIL}"
 fi
 
-exec env HOME="${HOME_DIR}" gosu "${TARGET_UID}:${TARGET_GID}" "$@"
+export HOME="${HOME_DIR}"
+exec gosu "${TARGET_UID}:${TARGET_GID}" "$@"
