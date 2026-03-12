@@ -46,4 +46,17 @@ if [ -n "${GIT_USER_EMAIL:-}" ]; then
   git config --global user.email "${GIT_USER_EMAIL}" || true
 fi
 
-exec "$@"
+if [ "$#" -eq 0 ]; then
+  set -- gateway
+fi
+
+if command -v "$1" >/dev/null 2>&1; then
+  exec "$@"
+fi
+
+if command -v zeroclaw >/dev/null 2>&1; then
+  exec zeroclaw "$@"
+fi
+
+echo "startup error: cannot resolve command '$1' and zeroclaw is unavailable in PATH" >&2
+wait_for_manual_fix
