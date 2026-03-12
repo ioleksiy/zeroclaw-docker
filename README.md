@@ -14,6 +14,8 @@ This image extends upstream ZeroClaw with:
 
 No `docker-compose` is included in this repository. It provides image build and publish only.
 
+At container startup, the entrypoint attempts to make `/zeroclaw-data` and `/repos` writable when running as root (common fix for fresh root-owned Swarm volumes).
+
 ## Environment Variables
 
 - `API_KEY` - LLM provider API key for ZeroClaw
