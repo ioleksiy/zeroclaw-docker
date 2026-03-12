@@ -32,10 +32,10 @@ COPY --from=tools /etc/ssh/ /etc/ssh/
 COPY --from=tools /etc/bash.bashrc /etc/bash.bashrc
 COPY --from=tools /bin/bash /bin/bash
 
+USER root
 SHELL ["/bin/bash", "-c"]
 RUN mkdir -p /zeroclaw-data /repos
 
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
-USER root
