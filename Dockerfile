@@ -21,8 +21,17 @@ RUN set -eux; \
     mkdir -p /opt/runtime; \
     copy_path() { \
         local src="$1"; \
+        local rel; \
+        local dst; \
         if [ -e "${src}" ]; then \
-            cp -a --parents "${src}" /opt/runtime; \
+            rel="${src#/}"; \
+            case "${rel}" in \
+                lib/*) rel="usr/${rel}" ;; \
+                lib64/*) rel="usr/${rel}" ;; \
+            esac; \
+            dst="/opt/runtime/${rel}"; \
+            mkdir -p "$(dirname "${dst}")"; \
+            cp -a "${src}" "${dst}"; \
         fi; \
     }; \
     copy_bin_with_libs() { \
