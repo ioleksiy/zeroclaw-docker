@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 set -eu
 
 wait_for_manual_fix() {

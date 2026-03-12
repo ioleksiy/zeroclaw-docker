@@ -33,7 +33,7 @@ RUN set -eux; \
         done; \
     }; \
     for bin in \
-        /bin/bash \
+        /usr/bin/bash \
         /usr/bin/git \
         /usr/bin/gh \
         /usr/bin/curl \
